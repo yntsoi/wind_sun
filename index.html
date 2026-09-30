@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語文科眼動學習遊戲 - 衣物與天氣 (輕快音樂粵語版)</title>
+    <style>
+        :root {
+            --bg-color: #EBF8FF;
+            --target-size: 420px;
+            --dwell-time: 1.5s;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            font-family: "PingFang HK", "Microsoft JhengHei", sans-serif;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.3s ease;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 教師控制面板 */
+        #teacher-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 1000;
+            font-size: 14px;
+            flex-wrap: wrap;
+        }
+
+        #teacher-panel label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: bold;
+            color: #2D3748;
+        }
+
+        .btn {
+            background: #3182CE;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: #2B6CB0; }
+        .btn-purple { background: #ED64A6; }
+        .btn-purple:hover { background: #D53F8C; }
+        .btn-green { background: #38A169; }
+        .btn-green:hover { background: #2F855A; }
+
+        select {
+            padding: 5px 8px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #CBD5E0;
+        }
+
+        /* 遊戲主要區域 (單一物品) */
+        #game-stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 注視目標卡片 */
+        .target-card {
+            width: var(--target-size);
+            height: var(--target-size);
+            background: #FFFFFF;
+            border-radius: 36px;
+            box-shadow: 0 16px 36px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+
+        .target-card img, .target-card svg {
+            width: 95%;
+            height: 85%;
+            max-width: 95%;
+            max-height: 85%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .item-label {
+            margin-top: 4px;
+            font-size: clamp(24px, 4vw, 36px);
+            font-weight: bold;
+            color: #2D3748;
+        }
+
+        /* 注視倒數外圈動畫 */
+        .dwell-ring {
+            position: absolute;
+            top: -14px;
+            left: -14px;
+            width: calc(100% + 28px);
+            height: calc(100% + 28px);
+            pointer-events: none;
+        }
+
+        .dwell-ring svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .dwell-ring rect {
+            fill: none;
+            stroke: #E53E3E;
+            stroke-width: 12;
+            rx: 44px;
+            ry: 44px;
+            stroke-dasharray: 2000;
+            stroke-dashoffset: 2000;
+            transition: stroke-dashoffset 0s linear;
+        }
+
+        .target-card.gazing .dwell-ring rect {
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset var(--dwell-time) linear;
+        }
+
+        /* 觸發效果彈窗 */
+        #result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .result-box {
+            background: white;
+            padding: 40px 60px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+            animation: popIn 0.3s ease-out;
+            max-width: 80%;
+        }
+
+        .result-icon {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .result-text {
+            font-size: 38px;
+            font-weight: bold;
+            color: #1A202C;
+            margin-top: 20px;
+            line-height: 1.4;
+        }
+
+        /* 上傳圖片彈窗 Modal */
+        #upload-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px 35px;
+            border-radius: 20px;
+            width: 480px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #2D3748;
+        }
+
+        .upload-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .upload-row span {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .preview-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border: 1px solid #CBD5E0;
+            border-radius: 6px;
+            background: #F7FAFC;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 教師控制面板 -->
+    <div id="teacher-panel">
+        <label>
+            🎨 背景：
+            <input type="color" id="bgColorPicker" value="#EBF8FF">
+        </label>
+
+        <label>
+            ⏱️ 注視時間：
+            <input type="number" id="dwellInput" value="1.5" min="0.3" max="5" step="0.1" style="width: 40px;"> 秒
+        </label>
+
+        <label>
+            🔍 大小：
+            <input type="range" id="sizeInput" min="200" max="700" value="420" style="width: 90px;">
+        </label>
+
+        <label>
+            👕 物品：
+            <select id="itemSelect" onchange="changeItem(this.value)">
+                <option value="0">圍巾 (風)</option>
+                <option value="1">帽子 (太陽)</option>
+                <option value="2">手帕 (太陽)</option>
+                <option value="3">外套 (風)</option>
+            </select>
+        </label>
+
+        <button class="btn" onclick="prevItem()">◄ 上一個</button>
+        <button class="btn" onclick="nextItem()">下一個 ►</button>
+
+        <!-- 輕快背景音樂控制區 -->
+        <button class="btn btn-purple" id="musicBtn" onclick="toggleMusic()">🎶 輕快音樂</button>
+        <label>
+            🔊 音量：
+            <input type="range" id="volumeInput" min="0" max="1" step="0.05" value="0.2" oninput="setMusicVolume(this.value)" style="width: 70px;">
+        </label>
+
+        <button class="btn btn-green" onclick="openUploadModal()">🖼️ 更換圖片</button>
+    </div>
+
+    <!-- 遊戲主要區域 -->
+    <div id="game-stage">
+        <div class="target-card" id="targetCard">
+            <div class="dwell-ring">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <rect x="2" y="2" width="96" height="96" />
+                </svg>
+            </div>
+            <div id="itemImageContainer" style="width: 100%; height: 85%; display: flex; justify-content: center; align-items: center;"></div>
+            <div class="item-label" id="itemLabel">圍巾</div>
+        </div>
+    </div>
+
+    <!-- 視覺與語音反饋彈窗 -->
+    <div id="result-overlay">
+        <div class="result-box">
+            <div id="resultIcon" class="result-icon"></div>
+            <div id="resultText" class="result-text"></div>
+        </div>
+    </div>
+
+    <!-- 更換圖片彈窗 Modal -->
+    <div id="upload-modal">
+        <div class="modal-content">
+            <h3>🖼️ 上傳/更換自訂圖片</h3>
+            
+            <div class="upload-row">
+                <span>🧣 圍巾：</span>
+                <img id="thumb-0" class="preview-thumb">
+                <input type="file" accept="image/*" onchange="handleFileUpload(event, 0)">
+            </div>
+
+            <div class="upload-row">
+                <span>🧢 帽子：</span>
+                <img id="thumb-1" class="preview-thumb">
+                <input type="file" accept="image/*" onchange="handleFileUpload(event, 1)">
+            </div>
+
+            <div class="upload-row">
+                <span>🧕 手帕：</span>
+                <img id="thumb-2" class="preview-thumb">
+                <input type="file" accept="image/*" onchange="handleFileUpload(event, 2)">
+            </div>
+
+            <div class="upload-row">
+                <span>🧥 外套：</span>
+                <img id="thumb-3" class="preview-thumb">
+                <input type="file" accept="image/*" onchange="handleFileUpload(event, 3)">
+            </div>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn" onclick="resetDefaultImages()" style="background: #E53E3E; margin-right: 10px;">還原預設圖</button>
+                <button class="btn" onclick="closeUploadModal()">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 預設 SVG 圖案
+        const DEFAULT_SVGS = {
+            scarf: `<svg viewBox="0 0 100 100"><path d="M25 45 C25 25, 75 25, 75 45 C75 55, 65 60, 55 60 L55 85 C55 90, 45 90, 45 85 L45 55 L35 55 C25 55, 25 45, 25 45 Z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="3"/><path d="M35 55 L35 80 C35 85, 25 85, 25 80 L25 50" fill="#60A5FA" stroke="#1D4ED8" stroke-width="3"/><path d="M25 75 L35 75 M45 80 L55 80" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/></svg>`,
+            hat: `<svg viewBox="0 0 100 100"><circle cx="50" cy="20" r="10" fill="#F87171"/><path d="M20 65 C20 35, 80 35, 80 65 Z" fill="#EF4444"/><rect x="15" y="60" width="70" height="15" rx="7" fill="#FCA5A5" stroke="#DC2626" stroke-width="3"/></svg>`,
+            handkerchief: `<svg viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" rx="6" transform="rotate(45 50 50)" fill="#F472B6" stroke="#DB2777" stroke-width="3"/><circle cx="50" cy="50" r="5" fill="#FFF"/><circle cx="40" cy="50" r="3" fill="#FDE047"/><circle cx="60" cy="50" r="3" fill="#FDE047"/><circle cx="50" cy="40" r="3" fill="#FDE047"/><circle cx="50" cy="60" r="3" fill="#FDE047"/></svg>`,
+            coat: `<svg viewBox="0 0 100 100"><path d="M30 25 L15 45 L25 50 L30 35 L30 85 L70 85 L70 35 L75 50 L85 45 L70 25 Z" fill="#10B981" stroke="#047857" stroke-width="3"/><line x1="50" y1="25" x2="50" y2="85" stroke="#047857" stroke-width="3"/><circle cx="56" cy="45" r="3" fill="#F59E0B"/><circle cx="56" cy="60" r="3" fill="#F59E0B"/><circle cx="56" cy="75" r="3" fill="#F59E0B"/></svg>`,
+            sun: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="22" fill="#FBBF24" stroke="#F59E0B" stroke-width="3"/><g stroke="#F59E0B" stroke-width="5" stroke-linecap="round"><line x1="50" y1="12" x2="50" y2="2" /><line x1="50" y1="88" x2="50" y2="98" /><line x1="12" y1="50" x2="2" y2="50" /><line x1="88" y1="50" x2="98" y2="50" /><line x1="23" y1="23" x2="16" y2="16" /><line x1="77" y1="77" x2="84" y2="84" /><line x1="23" y1="77" x2="16" y2="84" /><line x1="77" y1="23" x2="84" y2="16" /></g><circle cx="43" cy="45" r="3" fill="#78350F"/><circle cx="57" cy="45" r="3" fill="#78350F"/><path d="M43 55 Q50 62 57 55" fill="none" stroke="#78350F" stroke-width="3" stroke-linecap="round"/></svg>`,
+            wind: `<svg viewBox="0 0 100 100"><path d="M15 35 C 30 35, 55 35, 65 35 C 75 35, 80 25, 70 20 C 60 15, 60 28, 65 28" fill="none" stroke="#38BDF8" stroke-width="6" stroke-linecap="round"/><path d="M10 55 C 35 55, 65 55, 75 55 C 85 55, 90 65, 80 70 C 70 75, 70 62, 75 62" fill="none" stroke="#0284C7" stroke-width="6" stroke-linecap="round"/><path d="M25 75 C 40 75, 50 75, 60 75 C 68 75, 72 82, 65 85 C 58 88, 58 80, 62 80" fill="none" stroke="#38BDF8" stroke-width="5" stroke-linecap="round"/></svg>`
+        };
+
+        const gameItems = [
+            {
+                name: '圍巾',
+                defaultSvg: DEFAULT_SVGS.scarf,
+                customImg: null,
+                weatherSvg: DEFAULT_SVGS.wind,
+                speech: '刮大風時，要圍上圍巾。'
+            },
+            {
+                name: '帽子',
+                defaultSvg: DEFAULT_SVGS.hat,
+                customImg: null,
+                weatherSvg: DEFAULT_SVGS.sun,
+                speech: '出太陽時，要戴上帽子。'
+            },
+            {
+                name: '手帕',
+                defaultSvg: DEFAULT_SVGS.handkerchief,
+                customImg: null,
+                weatherSvg: DEFAULT_SVGS.sun,
+                speech: '出太陽時，要用手帕抹汗。'
+            },
+            {
+                name: '外套',
+                defaultSvg: DEFAULT_SVGS.coat,
+                customImg: null,
+                weatherSvg: DEFAULT_SVGS.wind,
+                speech: '刮大風時，要穿上外套。'
+            }
+        ];
+
+        let currentIndex = 0;
+        let gazeTimer = null;
+        let isTriggered = false;
+
+        // Web Audio API 輕快木琴/馬林巴琴音樂產生器
+        let audioCtx = null;
+        let gainNode = null;
+        let isMusicPlaying = false;
+        let musicInterval = null;
+        let bgmVolume = 0.2;
+        let noteStep = 0;
+
+        // 輕快 C 大調歡樂旋律音階 (Hz)
+        const upbeatMelody = [
+            523.25, 659.25, 783.99, 1046.50, // C5, E5, G5, C6
+            659.25, 783.99, 1046.50, 880.00, // E5, G5, C6, A5
+            587.33, 698.46, 880.00, 1174.66, // D5, F5, A5, D6
+            698.46, 880.00, 1046.50, 783.99, // F5, A5, C6, G5
+            659.25, 783.99, 1046.50, 1318.51, // E5, G5, C6, E6
+            783.99, 1046.50, 880.00, 698.46  // G5, C6, A5, F5
+        ];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioCtx.createGain();
+                gainNode.gain.value = bgmVolume;
+                gainNode.connect(audioCtx.destination);
+            }
+        }
+
+        function playUpbeatNote() {
+            if (!isMusicPlaying || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const noteGain = audioCtx.createGain();
+
+            // 依序播放輕快旋律
+            const freq = upbeatMelody[noteStep % upbeatMelody.length];
+            noteStep++;
+
+            // 使用 Triangle 波型（模擬木琴/馬林巴琴清脆明亮質感）
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            const now = audioCtx.currentTime;
+            // 輕快短音 (Staccato)
+            noteGain.gain.setValueAtTime(0, now);
+            noteGain.gain.linearRampToValueAtTime(0.3, now + 0.02); // 快速起音
+            noteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32); // 迅速衰減
+
+            osc.connect(noteGain);
+            noteGain.connect(gainNode);
+
+            osc.start(now);
+            osc.stop(now + 0.35);
+        }
+
+        function toggleMusic() {
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const btn = document.getElementById('musicBtn');
+            if (isMusicPlaying) {
+                isMusicPlaying = false;
+                clearInterval(musicInterval);
+                btn.innerText = '🎶 輕快音樂';
+                btn.style.background = '#ED64A6';
+            } else {
+                isMusicPlaying = true;
+                btn.innerText = '⏸️ 暫停音樂';
+                btn.style.background = '#DD6B20';
+                playUpbeatNote();
+                musicInterval = setInterval(playUpbeatNote, 280); // 每 280 毫秒跳動一個輕快音符
+            }
+        }
+
+        function setMusicVolume(val) {
+            bgmVolume = parseFloat(val);
+            if (gainNode && audioCtx) {
+                gainNode.gain.setValueAtTime(bgmVolume, audioCtx.currentTime);
+            }
+        }
+
+        const targetCard = document.getElementById('targetCard');
+        const itemImageContainer = document.getElementById('itemImageContainer');
+        const itemLabel = document.getElementById('itemLabel');
+        const itemSelect = document.getElementById('itemSelect');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const dwellInput = document.getElementById('dwellInput');
+        const sizeInput = document.getElementById('sizeInput');
+
+        function initStorage() {
+            gameItems.forEach((item, idx) => {
+                const saved = localStorage.getItem(`custom_item_img_${idx}`);
+                if (saved) {
+                    item.customImg = saved;
+                }
+            });
+        }
+
+        bgColorPicker.addEventListener('input', (e) => {
+            document.documentElement.style.setProperty('--bg-color', e.target.value);
+        });
+
+        dwellInput.addEventListener('change', (e) => {
+            document.documentElement.style.setProperty('--dwell-time', `${e.target.value}s`);
+        });
+
+        sizeInput.addEventListener('input', (e) => {
+            document.documentElement.style.setProperty('--target-size', `${e.target.value}px`);
+        });
+
+        function loadItem(index) {
+            currentIndex = index;
+            itemSelect.value = index;
+            const item = gameItems[currentIndex];
+
+            if (item.customImg) {
+                itemImageContainer.innerHTML = `<img src="${item.customImg}" alt="${item.name}">`;
+            } else {
+                itemImageContainer.innerHTML = item.defaultSvg;
+            }
+
+            itemLabel.innerText = item.name;
+            stopGaze();
+        }
+
+        function changeItem(index) {
+            loadItem(parseInt(index));
+        }
+
+        function nextItem() {
+            let nextIdx = (currentIndex + 1) % gameItems.length;
+            loadItem(nextIdx);
+        }
+
+        function prevItem() {
+            let prevIdx = (currentIndex - 1 + gameItems.length) % gameItems.length;
+            loadItem(prevIdx);
+        }
+
+        targetCard.addEventListener('mouseenter', startGaze);
+        targetCard.addEventListener('mouseleave', stopGaze);
+
+        function startGaze() {
+            if (isTriggered) return;
+            targetCard.classList.add('gazing');
+            const dwellTimeMs = parseFloat(dwellInput.value) * 1000;
+
+            gazeTimer = setTimeout(() => {
+                triggerResult();
+            }, dwellTimeMs);
+        }
+
+        function stopGaze() {
+            targetCard.classList.remove('gazing');
+            if (gazeTimer) {
+                clearTimeout(gazeTimer);
+                gazeTimer = null;
+            }
+        }
+
+        function triggerResult() {
+            isTriggered = true;
+            stopGaze();
+
+            const item = gameItems[currentIndex];
+            const overlay = document.getElementById('result-overlay');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultText = document.getElementById('resultText');
+
+            resultIcon.innerHTML = item.weatherSvg;
+            resultText.innerText = item.speech;
+            overlay.style.display = 'flex';
+
+            speakCantonese(item.speech, () => {
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    isTriggered = false;
+                }, 1200);
+            });
+        }
+
+        function speakCantonese(text, onEnd) {
+            window.speechSynthesis.cancel();
+
+            // 朗讀語音時，背景音樂自動調小聲 (Audio Ducking)
+            if (gainNode && audioCtx && isMusicPlaying) {
+                gainNode.gain.setValueAtTime(bgmVolume * 0.2, audioCtx.currentTime);
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 0.8;
+
+            const voices = window.speechSynthesis.getVoices();
+            const hkVoice = voices.find(v => v.lang === 'zh-HK' || v.lang.includes('HK') || v.lang.includes('yue'));
+            if (hkVoice) {
+                utterance.voice = hkVoice;
+            }
+
+            const finishSpeech = () => {
+                // 語音結束後恢復背景音樂音量
+                if (gainNode && audioCtx && isMusicPlaying) {
+                    gainNode.gain.setValueAtTime(bgmVolume, audioCtx.currentTime);
+                }
+                if (onEnd) onEnd();
+            };
+
+            utterance.onend = finishSpeech;
+            utterance.onerror = finishSpeech;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function openUploadModal() {
+            gameItems.forEach((item, idx) => {
+                const thumb = document.getElementById(`thumb-${idx}`);
+                if (item.customImg) {
+                    thumb.src = item.customImg;
+                } else {
+                    thumb.src = `data:image/svg+xml;utf8,${encodeURIComponent(item.defaultSvg)}`;
+                }
+            });
+            document.getElementById('upload-modal').style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+            loadItem(currentIndex);
+        }
+
+        function handleFileUpload(event, itemIndex) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                gameItems[itemIndex].customImg = dataUrl;
+                document.getElementById(`thumb-${itemIndex}`).src = dataUrl;
+                try {
+                    localStorage.setItem(`custom_item_img_${itemIndex}`, dataUrl);
+                } catch (err) {
+                    console.warn("圖片較大，暫時不寫入本地快取。");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetDefaultImages() {
+            if (confirm("確定要還原為預設圖案嗎？")) {
+                gameItems.forEach((item, idx) => {
+                    item.customImg = null;
+                    localStorage.removeItem(`custom_item_img_${idx}`);
+                });
+                openUploadModal();
+            }
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+
+        initStorage();
+        loadItem(0);
+    </script>
+</body>
+</html>
